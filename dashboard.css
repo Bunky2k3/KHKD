@@ -1,0 +1,328 @@
+:root {
+  --bg: #0B1524;
+  --surface: #10203A;
+  --surface-raised: #142A4A;
+  --border: #223a5e;
+  --text: #F4F7FB;
+  --text-muted: #8DA3C2;
+  --gold: #C9A24B;
+  --good: #3EAE7E;
+  --mid: #E0A83E;
+  --low: #E2574C;
+
+  --font-display: 'Manrope', 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+.page {
+  min-height: 100vh;
+  padding: 2.2vh 2.5vw 3vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1.6vh;
+}
+
+/* Header */
+.page-header {
+    display: grid;
+    grid-template-columns: 260px 1fr 260px;
+    align-items: center;
+    gap: 1.5vw;
+}
+
+.logo-slot {
+    width: 260px;
+    height: 78px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-shrink: 0;
+    overflow: hidden;
+    position: relative;
+}
+.logo-slot img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.logo-slot:not(.has-logo)::after {
+  content: "LOGO";
+  color: var(--text-muted);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+}
+
+.title-block {
+    min-width: 0;
+    text-align: center;
+}
+
+.title-block h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(24px, 2.8vw, 42px);
+  margin: 0;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subtitle {
+  margin: 0.3rem 0 0;
+  color: var(--text-muted);
+  font-size: clamp(13px, 1vw, 17px);
+}
+
+.clock-block {
+    text-align: right;
+    width: 280px;
+}
+
+.clock {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(20px, 2.2vw, 32px);
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.updated-at {
+  color: var(--text-muted);
+  font-size: clamp(11px, 0.85vw, 14px);
+  margin-top: 0.2rem;
+}
+
+/* View tabs (Năm / Q1-Q4) */
+.view-tabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6vw;
+}
+
+.view-tab {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 0.6vh 1.3vw;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(13px, 1vw, 16px);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.view-tab:hover { color: var(--text); border-color: var(--gold); }
+
+.view-tab.active {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #0B1524;
+}
+
+.time-remaining {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: clamp(12px, 0.9vw, 15px);
+  white-space: nowrap;
+}
+
+/* Hero (Tổng toàn hệ thống) */
+.hero {
+    background: linear-gradient(135deg, var(--surface-raised), var(--surface));
+    border: 1px solid var(--border);
+    border-left: 6px solid var(--gold);
+    border-radius: 18px;
+    padding: 2.2vh 2.4vw;
+    display: grid;
+    grid-template-columns: 2fr 2fr 2fr 1fr 1fr;
+    gap: 1.6vh 1.5vw;
+    position: relative;
+}
+
+.hero-loading, .error-state.hero-loading {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-size: 20px;
+  padding: 2vh 0;
+}
+
+.hero-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5vh;
+  min-width: 0;
+}
+
+
+.hero-stat .stat-label {
+  color: var(--text-muted);
+  font-size: clamp(14px, 1.1vw, 19px);
+  font-weight: 500;
+}
+
+.hero-stat .stat-value {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(20px, 1.9vw, 38px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.hero-stat .stat-value .unit {
+  font-size: 0.42em;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+.hero-progress {
+    grid-column: 1 / -1;
+    height: 10px;
+    border-radius: 999px;
+    background: #0A1729;
+    overflow: hidden;
+    margin-top: 0.6vh;
+}
+
+.hero-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.8s ease;
+}
+
+.hero-progress-fill.tier-low  { background: var(--low); }
+.hero-progress-fill.tier-mid  { background: var(--mid); }
+.hero-progress-fill.tier-good { background: var(--good); }
+
+.hero-stat.percent.tier-low  .stat-value { color: var(--low); }
+.hero-stat.percent.tier-mid  .stat-value { color: var(--mid); }
+.hero-stat.percent.tier-good .stat-value { color: var(--good); }
+
+/* Branch grid - tự co giãn theo không gian thật có, không còn ngưỡng cứng */
+.branches { flex: 1; }
+
+.branch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.1vw;
+}
+
+.branch-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.6vh 1.3vw;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9vh;
+  min-width: 0;
+}
+
+.branch-card .branch-name {
+  font-weight: 700;
+  font-size: clamp(14px, 1.05vw, 18px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.branch-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1vh;
+    font-size: clamp(11px, 0.85vw, 14px);
+    color: var(--text-muted);
+    margin-bottom: 0.3vh;
+}
+
+.branch-row span:last-child {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: 1.05em;
+}
+.branch-row .unit {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.branch-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: #0A1729;
+  overflow: hidden;
+  margin-top: 0.2vh;
+}
+
+.branch-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.8s ease;
+}
+
+.branch-percent {
+  align-self: flex-end;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(18px, 1.4vw, 26px);
+  font-variant-numeric: tabular-nums;
+}
+
+.tier-low .branch-progress-fill { background: var(--low); }
+.tier-low .branch-percent { color: var(--low); }
+.tier-mid .branch-progress-fill { background: var(--mid); }
+.tier-mid .branch-percent { color: var(--mid); }
+.tier-good .branch-progress-fill { background: var(--good); }
+.tier-good .branch-percent { color: var(--good); }
+
+.empty-state, .error-state {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 4vh 0;
+  font-size: 16px;
+}
+
+.error-state {
+  color: var(--low);
+  text-align: left;
+  white-space: pre-line;
+  line-height: 1.6;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Hiệu ứng số liệu nảy nhẹ khi cập nhật */
+.value-num.pop {
+  animation: popScale 0.5s ease;
+  display: inline-block;
+}
+
+@keyframes popScale {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.12); color: var(--gold); }
+  100% { transform: scale(1); }
+}
+.branch-card.no-plan .branch-progress,
+.branch-card.no-plan .branch-percent {
+    display: none;
+}
