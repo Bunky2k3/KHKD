@@ -326,3 +326,50 @@ html, body {
 .branch-card.no-plan .branch-percent {
     display: none;
 }
+
+/* ====== Tối ưu cho màn hình hẹp (tablet/điện thoại) ====== */
+@media (max-width: 860px) {
+    .page-header {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        text-align: center;
+        gap: 1vh;
+    }
+
+    .logo-slot {
+        width: 130px;
+        height: 48px;
+    }
+
+    .clock-block {
+        width: auto;
+        text-align: center;
+    }
+
+    .title-block h1 {
+        white-space: normal;
+        font-size: clamp(20px, 6vw, 32px);
+    }
+
+    .hero {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .branch-grid {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
+}
+
+@media (max-width: 480px) {
+    .hero {
+        grid-template-columns: 1fr;
+    }
+
+    .branch-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .view-tabs {
+        justify-content: center;
+    }
+}
