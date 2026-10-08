@@ -77,7 +77,7 @@ function parseYearRows(rows) {
 
  
   const totalPlan = allItems.reduce((s, i) => s + i.plan, 0);
-  const totalDone = allItems.reduce((s, i) => s + i.done, 0);
+  const totalDone = allItems.reduce((s, i) => s + i.done, 0) + (accounting ? accounting.done : 0);
   const totalRemain = allItems.reduce((s, i) => s + i.remain, 0);
   const totalPercent = totalPlan !== 0 ? round2((totalDone / totalPlan) * 100) : 100;
 
@@ -121,9 +121,9 @@ function parseQuarterRows(rows, quarterKey) {
   if (names.length === 0) return { main: null, accounting };
 
   let totalPlan = 0, totalDone = 0;
-  names.forEach((n) => { totalPlan += groups[n].plan; totalDone += groups[n].done; });
-  const totalPercent = totalPlan !== 0 ? round2((totalDone / totalPlan) * 100) : 100;
-
+    names.forEach((n) => { totalPlan += groups[n].plan; totalDone += groups[n].done; });
+    const totalRemain = totalPlan - totalDone;    
+    totalDone += accounting ? accounting.done : 0; 
   const branches = names
     .filter((n) => !isHidden(n))
     .map((name) => {
@@ -135,8 +135,7 @@ function parseQuarterRows(rows, quarterKey) {
 
   return {
     main: {
-      total: { name: quarterKey.toUpperCase(), plan: totalPlan, done: totalDone, remain: totalPlan - totalDone, percent: totalPercent },
-      branches,
+      total: { name: quarterKey.toUpperCase(), plan: totalPlan, done: totalDone, remain: totalRemain, percent: totalPercent },
     },
     accounting,
   };
