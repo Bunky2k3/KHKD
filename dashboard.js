@@ -1,10 +1,12 @@
-// ====== CẤU HÌNH ======
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypxVOhXyHz5Gfq2tXkI7_NkIRW7oOon5UyLNH8mwQ-6noUkDbq4PGr8psI_bLJOMH6yQ/exec";
+//const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypxVOhXyHz5Gfq2tXkI7_NkIRW7oOon5UyLNH8mwQ-6noUkDbq4PGr8psI_bLJOMH6yQ/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkwjxj53CzoaTXa6py4Hg438Eibz34iRWa56qCd_tj70rvAaS5Gl5xhx3Sq_YzDiw9PQ/exec";
 const TOTAL_ROW_LABEL = "Tổng cộng";
-const HIDDEN_BRANCHES = ["PKH"]; // Cộng vào Tổng nhưng ẩn khỏi lưới hiển thị
+const ACCOUNTING_ROW_NAME = "Kế toán"; 
+const HIDDEN_BRANCHES = ["PKH"];
 const REFRESH_SECONDS = 300;
 
 const heroSection = document.getElementById('heroSection');
+const accountingSection = document.getElementById('accountingSection');
 const branchGrid = document.getElementById('branchGrid');
 const updatedAtEl = document.getElementById('updatedAt');
 const clockEl = document.getElementById('clock');
@@ -23,7 +25,7 @@ function tierOf(percent) {
   return 'tier-good';
 }
 
-// ---- Đọc dữ liệu thô từ Apps Script & tự xử lý nghiệp vụ (trước đây nằm bên C#) ----
+// ---- Đọc dữ liệu thô từ Apps Script và tự xử lý nghiệp vụ ----
 
 function toNumber(v) {
   if (typeof v === 'number') return v;
@@ -32,50 +34,66 @@ function toNumber(v) {
   return isNaN(n) ? 0 : n;
 }
 
+function normalizeText(s) {
+  return String(s || '').normalize('NFC').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 function isHidden(name) {
-  return HIDDEN_BRANCHES.some((h) => h.toLowerCase() === name.toLowerCase());
+  return HIDDEN_BRANCHES.some((h) => normalizeText(h) === normalizeText(name));
+}
+
+function isAccountingRow(name) {
+  return normalizeText(name) === normalizeText(ACCOUNTING_ROW_NAME);
 }
 
 function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
-// Dữ liệu thô của view "year": mỗi dòng là [Chi nhánh, Kế hoạch, Đã thực hiện, Còn lại]
+
 function parseYearRows(rows) {
   const allItems = [];
+  let accounting = null;
 
   rows.forEach((row) => {
     const name = String(row[0] || '').trim();
     if (!name) return;
-    if (name.toLowerCase() === TOTAL_ROW_LABEL.toLowerCase()) return; // bỏ dòng Tổng có sẵn, tự cộng lại bên dưới
+    if (normalizeText(name) === normalizeText(TOTAL_ROW_LABEL)) return; 
 
     const plan = toNumber(row[1]);
     const done = toNumber(row[2]);
     const remain = toNumber(row[3]);
-    const percent = plan !== 0 ? round2((done / plan) * 100) : 100;
 
+    if (isAccountingRow(name)) {
+      accounting = { done }; 
+      return;
+    }
+
+    const percent = plan !== 0 ? round2((done / plan) * 100) : 100;
     allItems.push({ name, plan, done, remain, percent });
   });
 
-  if (allItems.length === 0) return null;
+  if (allItems.length === 0) return { main: null, accounting };
 
-  // Tổng = cộng dồn TẤT CẢ đơn vị, kể cả đơn vị bị ẩn khỏi lưới (ví dụ PKH)
+ 
   const totalPlan = allItems.reduce((s, i) => s + i.plan, 0);
   const totalDone = allItems.reduce((s, i) => s + i.done, 0);
   const totalRemain = allItems.reduce((s, i) => s + i.remain, 0);
   const totalPercent = totalPlan !== 0 ? round2((totalDone / totalPlan) * 100) : 100;
 
   return {
-    total: { name: TOTAL_ROW_LABEL, plan: totalPlan, done: totalDone, remain: totalRemain, percent: totalPercent },
-    branches: allItems.filter((i) => !isHidden(i.name)),
+    main: {
+      total: { name: TOTAL_ROW_LABEL, plan: totalPlan, done: totalDone, remain: totalRemain, percent: totalPercent },
+      branches: allItems.filter((i) => !isHidden(i.name)),
+    },
+    accounting,
   };
 }
 
-// Dữ liệu thô của view "q1".."q4": mỗi dòng là [Năm, Quý, Chi nhánh, Kế hoạch, Đã thực hiện]
-// Gộp theo Chi nhánh, chỉ lấy đúng Năm hiện tại + đúng Quý đang xem
 function parseQuarterRows(rows, quarterKey) {
   const currentYear = new Date().getFullYear();
   const groups = {};
+  let accounting = null;
 
   rows.forEach((row) => {
     const year = toNumber(row[0]);
@@ -88,13 +106,19 @@ function parseQuarterRows(rows, quarterKey) {
     const plan = toNumber(row[3]);
     const done = toNumber(row[4]);
 
+    if (isAccountingRow(branch)) {
+      if (!accounting) accounting = { done: 0 };
+      accounting.done += done;
+      return;
+    }
+
     if (!groups[branch]) groups[branch] = { plan: 0, done: 0 };
     groups[branch].plan += plan;
     groups[branch].done += done;
   });
 
   const names = Object.keys(groups);
-  if (names.length === 0) return null;
+  if (names.length === 0) return { main: null, accounting };
 
   let totalPlan = 0, totalDone = 0;
   names.forEach((n) => { totalPlan += groups[n].plan; totalDone += groups[n].done; });
@@ -110,12 +134,14 @@ function parseQuarterRows(rows, quarterKey) {
     });
 
   return {
-    total: { name: quarterKey.toUpperCase(), plan: totalPlan, done: totalDone, remain: totalPlan - totalDone, percent: totalPercent },
-    branches,
+    main: {
+      total: { name: quarterKey.toUpperCase(), plan: totalPlan, done: totalDone, remain: totalPlan - totalDone, percent: totalPercent },
+      branches,
+    },
+    accounting,
   };
 }
 
-// Đếm số chạy dần từ giá trị cũ -> giá trị mới, kèm hiệu ứng nảy nhẹ
 function animateValue(el, toValue, { isPercent = false, duration = 800, format = null } = {}) {
   const from = parseFloat(el.dataset.value || '0');
   const to = toValue;
@@ -141,7 +167,7 @@ function animateValue(el, toValue, { isPercent = false, duration = 800, format =
   el.dataset.value = to;
 }
 
-// ---- Khối Tổng (hero) ----
+
 let heroBuilt = false;
 
 function buildHero() {
@@ -165,6 +191,10 @@ function buildHero() {
     <div class="hero-stat">
       <div class="stat-label">Thời gian còn lại</div>
       <div class="stat-value"><span class="value-num" id="heroDaysLeft" data-value="0">0</span><span class="unit" id="heroDaysUnit">ngày</span></div>
+    </div>
+    <div class="hero-stat hero-accounting">
+      <div class="stat-label">Doanh thu Kế toán</div>
+      <div class="stat-value"><span class="value-num" id="heroAcctDone" data-value="0">0</span><span class="unit">VNĐ</span></div>
     </div>
     <div class="hero-progress"><div class="hero-progress-fill" id="heroProgressFill" style="width:0%"></div></div>
   `;
@@ -192,6 +222,33 @@ function updateHero(total) {
   document.getElementById('heroPercent').closest('.hero-stat').className = `hero-stat percent ${tier}`;
 }
 
+let accountingBuilt = false;
+
+function buildAccountingPanel() {
+  accountingSection.innerHTML = `
+    <div class="accounting-title">Doanh thu Kế toán</div>
+    <div class="accounting-value"><span class="value-num acct-done" data-value="0">0</span><span class="unit">VNĐ</span></div>
+  `;
+  accountingBuilt = true;
+}
+
+function updateAccounting(accounting) {
+    const heroAcctEl = document.getElementById('heroAcctDone'); // bản nằm trong khối Tổng (dùng cho điện thoại)
+    const heroAcctStat = heroAcctEl ? heroAcctEl.closest('.hero-stat') : null;
+
+    if (!accounting) {
+        accountingSection.innerHTML = '<div class="accounting-title">Doanh thu Kế toán</div><div class="empty-state" style="padding:2vh 0;">Chưa có dữ liệu.</div>';
+        accountingBuilt = false;
+        if (heroAcctStat) heroAcctStat.style.display = 'none';
+        return;
+    }
+
+    if (!accountingBuilt) buildAccountingPanel();
+    animateValue(accountingSection.querySelector('.acct-done'), accounting.done);
+
+    if (heroAcctStat) heroAcctStat.style.display = '';
+    if (heroAcctEl) animateValue(heroAcctEl, accounting.done);
+}
 // ---- Lưới chi nhánh ----
 const branchCards = new Map();
 
@@ -235,8 +292,7 @@ function renderBranches(branches) {
     return;
   }
 
-  // Đơn vị không có Kế hoạch (plan = 0) luôn rơi xuống cuối dù % hiển thị 100%,
-  // trong nhóm đó sắp theo Đã thực hiện giảm dần. Còn lại sắp theo % hoàn thành giảm dần.
+
   function compareBranches(a, b) {
     const aNoPlan = a.plan === 0;
     const bNoPlan = b.plan === 0;
@@ -249,7 +305,6 @@ function renderBranches(branches) {
   }
 
   const sorted = branches.slice().sort(compareBranches);
-
   const seen = new Set();
 
   sorted.forEach((b) => {
@@ -258,7 +313,7 @@ function renderBranches(branches) {
     if (!card) {
       card = createBranchCard(b);
     } else {
-      branchGrid.appendChild(card); // đưa card đã có về đúng vị trí mới theo thứ hạng
+      branchGrid.appendChild(card); 
     }
     updateBranchCard(card, b);
   });
@@ -289,7 +344,7 @@ function getQuarterEnd(year, qNum) {
 function updateTimeRemaining() {
   const daysEl = document.getElementById('heroDaysLeft');
   const unitEl = document.getElementById('heroDaysUnit');
-  if (!daysEl) return; // hero chưa dựng xong (lần load đầu tiên)
+  if (!daysEl) return; 
 
   const now = new Date();
   const year = now.getFullYear();
@@ -315,7 +370,7 @@ let hasLoadedOnce = false;
 
 function scheduleNextRefresh() {
   if (refreshTimer) clearTimeout(refreshTimer);
-  const jitter = Math.random() * 30000; // lệch ngẫu nhiên 0-30s, tránh nhiều máy cùng gọi 1 lúc
+  const jitter = Math.random() * 30000; 
   refreshTimer = setTimeout(loadData, REFRESH_SECONDS * 1000 + jitter);
 }
 
@@ -332,10 +387,12 @@ async function loadData() {
       ? parseYearRows(data.rows || [])
       : parseQuarterRows(data.rows || [], currentView);
 
-    if (!parsed) {
-      const msg = currentView === 'year'
-        ? 'Không đọc được dữ liệu năm.'
-        : `Chưa có dữ liệu cho ${currentView.toUpperCase()}/${new Date().getFullYear()}.`;
+      if (!parsed.main) {
+      updateAccounting(parsed.accounting);
+
+          const msg = currentView === 'year'
+              ? 'Không đọc được dữ liệu năm.'
+              : `Chưa có dữ liệu cho ${currentView.toUpperCase()}/${new Date().getFullYear()}.`;
 
       if (!hasLoadedOnce) {
         heroSection.innerHTML = `<div class="error-state">${msg}</div>`;
@@ -347,8 +404,9 @@ async function loadData() {
       return;
     }
 
-    updateHero(parsed.total);
-    renderBranches(parsed.branches);
+      updateHero(parsed.main.total);
+      updateAccounting(parsed.accounting);
+    renderBranches(parsed.main.branches);
     updateTimeRemaining();
 
     const now = new Date();
@@ -369,7 +427,7 @@ async function loadData() {
 function switchView(view) {
   if (view === currentView) return;
   currentView = view;
-  hasLoadedOnce = false; // để lỗi/rỗng của view mới hiện rõ ngay, không lẫn với dữ liệu view cũ
+  hasLoadedOnce = false;
 
   branchCards.clear();
   branchGrid.innerHTML = '';
@@ -393,7 +451,7 @@ function tickClock() {
 
 tickClock();
 setInterval(tickClock, 1000);
-setInterval(updateTimeRemaining, 60000); // cập nhật đếm ngược mỗi phút
+setInterval(updateTimeRemaining, 60000);
 
 updateTitle();
 loadData();

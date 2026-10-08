@@ -33,24 +33,25 @@ html, body {
   gap: 1.6vh;
 }
 
-/* Header */
+/* ====== Header ====== */
 .page-header {
-    display: grid;
-    grid-template-columns: 260px 1fr 260px;
-    align-items: center;
-    gap: 1.5vw;
+  display: grid;
+  grid-template-columns: 260px 1fr 280px;
+  align-items: center;
+  gap: 1.5vw;
 }
 
 .logo-slot {
-    width: 260px;
-    height: 78px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    flex-shrink: 0;
-    overflow: hidden;
-    position: relative;
+  width: 260px;
+  height: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
 }
+
 .logo-slot img {
   max-width: 100%;
   max-height: 100%;
@@ -67,8 +68,8 @@ html, body {
 }
 
 .title-block {
-    min-width: 0;
-    text-align: center;
+  min-width: 0;
+  text-align: center;
 }
 
 .title-block h1 {
@@ -89,8 +90,8 @@ html, body {
 }
 
 .clock-block {
-    text-align: right;
-    width: 280px;
+  text-align: right;
+  width: 280px;
 }
 
 .clock {
@@ -107,7 +108,7 @@ html, body {
   margin-top: 0.2rem;
 }
 
-/* View tabs (Năm / Q1-Q4) */
+/* ====== Nút chuyển Năm / Q1-Q4 ====== */
 .view-tabs {
   display: flex;
   align-items: center;
@@ -136,24 +137,27 @@ html, body {
   color: #0B1524;
 }
 
-.time-remaining {
-  margin-left: auto;
-  color: var(--text-muted);
-  font-size: clamp(12px, 0.9vw, 15px);
-  white-space: nowrap;
+/* ====== Hàng trên: khối Tổng (2/3) + Doanh thu Kế toán (1/3) ====== */
+.top-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.6vh 1.5vw;
+  align-items: stretch;
 }
 
-/* Hero (Tổng toàn hệ thống) */
+/* ====== Khối Tổng (hero): 5 ô trên 1 hàng, thanh tiến độ nằm dưới cùng ====== */
 .hero {
-    background: linear-gradient(135deg, var(--surface-raised), var(--surface));
-    border: 1px solid var(--border);
-    border-left: 6px solid var(--gold);
-    border-radius: 18px;
-    padding: 2.2vh 2.4vw;
-    display: grid;
-    grid-template-columns: 2fr 2fr 2fr 1fr 1fr;
-    gap: 1.6vh 1.5vw;
-    position: relative;
+  background: linear-gradient(135deg, var(--surface-raised), var(--surface));
+  border: 1px solid var(--border);
+  border-left: 6px solid var(--gold);
+  border-radius: 18px;
+  padding: 2.2vh 1.6vw;
+  display: grid;
+  grid-template-columns: 1.7fr 1.7fr 1.7fr 0.9fr 1.1fr;
+  gap: 1.6vh 1vw;
+  align-content: space-between;
+  position: relative;
+  min-width: 0;
 }
 
 .hero-loading, .error-state.hero-loading {
@@ -170,20 +174,26 @@ html, body {
   min-width: 0;
 }
 
-
 .hero-stat .stat-label {
   color: var(--text-muted);
-  font-size: clamp(14px, 1.1vw, 19px);
+  font-size: clamp(11px, 0.85vw, 16px);
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .hero-stat .stat-value {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: clamp(20px, 1.9vw, 38px);
+  font-size: clamp(13px, 1.05vw, 24px);
   font-variant-numeric: tabular-nums;
   line-height: 1.05;
   white-space: nowrap;
+}
+
+/* Ô thứ 4 (% hoàn thành) và ô thứ 5 (Thời gian còn lại) to hơn 3 ô số tiền */
+.hero-stat:nth-child(4) .stat-value,
+.hero-stat:nth-child(5) .stat-value {
+  font-size: clamp(16px, 1.4vw, 30px);
 }
 
 .hero-stat .stat-value .unit {
@@ -192,14 +202,16 @@ html, body {
   color: var(--text-muted);
   margin-left: 6px;
 }
-
+.hero-stat.hero-accounting {
+    display: none;
+}
 .hero-progress {
-    grid-column: 1 / -1;
-    height: 10px;
-    border-radius: 999px;
-    background: #0A1729;
-    overflow: hidden;
-    margin-top: 0.6vh;
+  grid-column: 1 / -1;
+  height: 10px;
+  border-radius: 999px;
+  background: #0A1729;
+  overflow: hidden;
+  margin-top: 0.6vh;
 }
 
 .hero-progress-fill {
@@ -216,7 +228,42 @@ html, body {
 .hero-stat.percent.tier-mid  .stat-value { color: var(--mid); }
 .hero-stat.percent.tier-good .stat-value { color: var(--good); }
 
-/* Branch grid - tự co giãn theo không gian thật có, không còn ngưỡng cứng */
+/* ====== Ô Doanh thu Kế toán (chỉ 1 con số, không có kế hoạch) ====== */
+.accounting-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 2.2vh 1.6vw;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.9vh;
+  min-width: 0;
+}
+
+.accounting-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(16px, 1.3vw, 22px);
+}
+
+.accounting-value {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(22px, 2.2vw, 24px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+  white-space: nowrap;
+}   
+
+.accounting-value .unit {
+  font-size: 0.4em;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: 8px;
+}
+
+/* ====== Lưới chi nhánh ====== */
 .branches { flex: 1; }
 
 .branch-grid {
@@ -245,20 +292,21 @@ html, body {
 }
 
 .branch-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.1vh;
-    font-size: clamp(11px, 0.85vw, 14px);
-    color: var(--text-muted);
-    margin-bottom: 0.3vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1vh;
+  font-size: clamp(11px, 0.85vw, 14px);
+  color: var(--text-muted);
+  margin-bottom: 0.3vh;
 }
 
 .branch-row span:last-child {
-    color: var(--text);
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-    font-size: 1.05em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 1.05em;
 }
+
 .branch-row .unit {
   font-size: 0.85em;
   color: var(--text-muted);
@@ -294,6 +342,13 @@ html, body {
 .tier-good .branch-progress-fill { background: var(--good); }
 .tier-good .branch-percent { color: var(--good); }
 
+/* Đơn vị không có kế hoạch: ẩn thanh tiến độ và số % */
+.branch-card.no-plan .branch-progress,
+.branch-card.no-plan .branch-percent {
+  display: none;
+}
+
+/* ====== Trạng thái rỗng / lỗi ====== */
 .empty-state, .error-state {
   grid-column: 1 / -1;
   color: var(--text-muted);
@@ -311,7 +366,7 @@ html, body {
   margin: 0 auto;
 }
 
-/* Hiệu ứng số liệu nảy nhẹ khi cập nhật */
+/* ====== Hiệu ứng số liệu nảy nhẹ khi cập nhật ====== */
 .value-num.pop {
   animation: popScale 0.5s ease;
   display: inline-block;
@@ -322,54 +377,83 @@ html, body {
   30%  { transform: scale(1.12); color: var(--gold); }
   100% { transform: scale(1); }
 }
-.branch-card.no-plan .branch-progress,
-.branch-card.no-plan .branch-percent {
-    display: none;
-}
 
-/* ====== Tối ưu cho màn hình hẹp (tablet/điện thoại) ====== */
+/* ====== Tablet / điện thoại ngang (dưới 860px) ====== */
 @media (max-width: 860px) {
-    .page-header {
-        grid-template-columns: 1fr;
-        justify-items: center;
-        text-align: center;
-        gap: 1vh;
+  .top-row {
+    grid-template-columns: 1fr;
+  }
+    .hero-stat.hero-accounting {
+        display: flex;
     }
 
-    .logo-slot {
-        width: 130px;
-        height: 48px;
+    .accounting-panel {
+        display: none;
     }
 
-    .clock-block {
-        width: auto;
-        text-align: center;
+  .page-header {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    gap: 1vh;
+  }
+
+  .logo-slot {
+    width: 130px;
+    height: 48px;
+    justify-content: center;
+  }
+
+  .clock-block {
+    width: auto;
+    text-align: center;
+  }
+
+  .title-block h1 {
+    white-space: normal;
+    font-size: clamp(20px, 6vw, 32px);
+  }
+
+  .hero {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .hero-stat .stat-label {
+    font-size: clamp(12px, 3vw, 15px);
+  }
+
+  .hero-stat .stat-value,
+  .hero-stat:nth-child(4) .stat-value,
+  .hero-stat:nth-child(5) .stat-value {
+    font-size: clamp(16px, 4vw, 24px);
+  }
+
+    .accounting-value {
+        font-size: clamp(18px, 1.6vw, 32px);
     }
 
-    .title-block h1 {
-        white-space: normal;
-        font-size: clamp(20px, 6vw, 32px);
-    }
-
-    .hero {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .branch-grid {
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    }
+  .branch-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
 }
 
+/* ====== Điện thoại đứng (dưới 480px) ====== */
 @media (max-width: 480px) {
-    .hero {
-        grid-template-columns: 1fr;
-    }
+  .hero {
+    grid-template-columns: 1fr;
+  }
 
-    .branch-grid {
-        grid-template-columns: 1fr;
-    }
+  .hero-stat .stat-value,
+  .hero-stat:nth-child(4) .stat-value,
+  .hero-stat:nth-child(5) .stat-value {
+    font-size: clamp(18px, 6vw, 26px);
+  }
 
-    .view-tabs {
-        justify-content: center;
-    }
+  .branch-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .view-tabs {
+    justify-content: center;
+  }
 }

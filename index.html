@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Kế hoạch doanh thu</title>
+    <link rel="icon" href="data:," />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -38,8 +39,15 @@
             <button class="view-tab" data-view="q4">Q4</button>
         </nav>
 
-        <section id="heroSection" class="hero" aria-label="Tổng toàn hệ thống">
-            <div class="hero-loading" id="heroLoading">Đang tải dữ liệu…</div>
+        <section class="top-row">
+            <section id="heroSection" class="hero" aria-label="Tổng toàn hệ thống">
+                <div class="hero-loading" id="heroLoading">Đang tải dữ liệu…</div>
+            </section>
+
+            <aside id="accountingSection" class="accounting-panel" aria-label="Doanh thu Kế toán">
+                <div class="accounting-title">Doanh thu Kế toán</div>
+                <div class="empty-state" style="padding:2vh 0;">Đang tải dữ liệu…</div>
+            </aside>
         </section>
 
         <section class="branches" aria-label="Chi tiết theo chi nhánh">
