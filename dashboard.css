@@ -137,6 +137,107 @@ html, body {
   color: #0B1524;
 }
 
+/* ====== Thanh công cụ: chuyển màn (Doanh thu / Sản lượng) + Năm/Quý ====== */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1vh 1.5vw;
+}
+
+.screen-tabs { display: flex; gap: 0.6vw; }
+
+.screen-tab {
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  padding: 0.7vh 1.6vw;
+  border-radius: 10px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(13px, 1.05vw, 17px);
+  cursor: pointer;
+  transition: background 0.25s ease, color 0.25s ease, transform 0.15s ease;
+}
+.screen-tab:hover { transform: translateY(-1px); }
+.screen-tab.active { background: var(--gold); color: #0B1524; }
+
+.view-tabs { transition: opacity 0.35s ease; }
+.view-tabs.is-hidden { opacity: 0; pointer-events: none; }
+
+/* ====== Thanh đếm ngược tới lúc tự đổi màn (nằm sát mép trên) ====== */
+.rotate-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  z-index: 50;
+  pointer-events: none;
+}
+.rotate-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--gold);
+  opacity: 0.7;
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.rotate-bar-fill.run { animation: rotateRun linear forwards; }
+@keyframes rotateRun { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* ====== Sân khấu chuyển màn ====== */
+.stage {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-x: clip;
+}
+
+.screen {
+  display: none;
+  flex-direction: column;
+  gap: 1.6vh;
+  flex: 1;
+}
+.screen.is-active { display: flex; }
+
+.screen.leaving {
+  display: flex;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: screenOut 0.55s ease forwards;
+}
+.screen.entering { animation: screenIn 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+.screen.entering .branch-card {
+  animation: cardIn 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms + 120ms);
+}
+
+@keyframes screenOut {
+  to { opacity: 0; transform: translateX(-5%) scale(0.985); }
+}
+@keyframes screenIn {
+  from { opacity: 0; transform: translateX(5%) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.title-block.swap { animation: titleSwap 0.6s ease both; }
+@keyframes titleSwap {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen.entering, .screen.leaving, .screen.entering .branch-card, .title-block.swap { animation-duration: 0.01s; animation-delay: 0s; }
+}
+
 /* ====== Hàng trên: khối Tổng (2/3) + Doanh thu Kế toán (1/3) ====== */
 .top-row {
   display: grid;
@@ -153,7 +254,7 @@ html, body {
   border-radius: 18px;
   padding: 2.2vh 1.6vw;
   display: grid;
-  grid-template-columns: 1.7fr 1.7fr 1.7fr 0.9fr 1.1fr;
+  grid-template-columns: 1.7fr 1.7fr 1.7fr 1fr;
   gap: 1.6vh 1vw;
   align-content: space-between;
   position: relative;
@@ -184,16 +285,15 @@ html, body {
 .hero-stat .stat-value {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: clamp(13px, 1.05vw, 24px);
+  font-size: clamp(13px, 1.2vw, 27px);
   font-variant-numeric: tabular-nums;
   line-height: 1.05;
   white-space: nowrap;
 }
 
-/* Ô thứ 4 (% hoàn thành) và ô thứ 5 (Thời gian còn lại) to hơn 3 ô số tiền */
-.hero-stat:nth-child(4) .stat-value,
-.hero-stat:nth-child(5) .stat-value {
-  font-size: clamp(16px, 1.4vw, 30px);
+/* Ô % hoàn thành to hơn 3 ô số tiền */
+.hero-stat.big .stat-value {
+  font-size: clamp(18px, 1.8vw, 36px);
 }
 
 .hero-stat .stat-value .unit {
@@ -202,9 +302,7 @@ html, body {
   color: var(--text-muted);
   margin-left: 6px;
 }
-.hero-stat.hero-accounting {
-    display: none;
-}
+
 .hero-progress {
   grid-column: 1 / -1;
   height: 10px;
@@ -228,6 +326,10 @@ html, body {
 .hero-stat.percent.tier-mid  .stat-value { color: var(--mid); }
 .hero-stat.percent.tier-good .stat-value { color: var(--good); }
 
+/* Ô Thời gian còn lại + dòng Kế toán nằm trong khối Tổng: chỉ hiện trên điện thoại (desktop nằm ở cột phải) */
+.hero-stat.hero-time { display: none; }
+.hero-stat.hero-accounting { display: none; grid-column: 1 / -1; }
+
 /* ====== Ô Doanh thu Kế toán (chỉ 1 con số, không có kế hoạch) ====== */
 .accounting-panel {
   background: var(--surface);
@@ -242,19 +344,20 @@ html, body {
 }
 
 .accounting-title {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: clamp(16px, 1.3vw, 22px);
+  color: var(--text-muted);
+  font-size: clamp(11px, 0.85vw, 16px);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .accounting-value {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: clamp(22px, 2.2vw, 24px);
+  font-size: clamp(12px, min(1.2vw, 4.6cqi), 27px); /* bằng cỡ số của khối Tổng, tự co theo bề rộng ô */
   font-variant-numeric: tabular-nums;
   line-height: 1.05;
   white-space: nowrap;
-}   
+}
 
 .accounting-value .unit {
   font-size: 0.4em;
@@ -262,6 +365,18 @@ html, body {
   color: var(--text-muted);
   margin-left: 8px;
 }
+
+/* Cột phải gồm nhiều khối xếp dọc, ngăn cách bằng đường mảnh */
+/* Cột phải (màn Doanh thu): Doanh thu Kế toán và Thời gian còn lại nằm cạnh nhau trên 1 hàng */
+.accounting-panel {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 1.4vw;
+}
+.aside-block { display: flex; flex-direction: column; gap: 0.9vh; min-width: 0; }
+.aside-block + .aside-block { border-left: 1px solid var(--border); padding-left: 1.4vw; }
 
 /* ====== Lưới chi nhánh ====== */
 .branches { flex: 1; }
@@ -383,13 +498,10 @@ html, body {
   .top-row {
     grid-template-columns: 1fr;
   }
-    .hero-stat.hero-accounting {
-        display: flex;
-    }
 
-    .accounting-panel {
-        display: none;
-    }
+  .hero-stat.hero-time { display: flex; }
+  .hero-stat.hero-accounting { display: flex; }
+  .accounting-panel { display: none; }
 
   .page-header {
     grid-template-columns: 1fr;
@@ -423,14 +535,13 @@ html, body {
   }
 
   .hero-stat .stat-value,
-  .hero-stat:nth-child(4) .stat-value,
-  .hero-stat:nth-child(5) .stat-value {
+  .hero-stat.big .stat-value {
     font-size: clamp(16px, 4vw, 24px);
   }
 
-    .accounting-value {
-        font-size: clamp(18px, 1.6vw, 32px);
-    }
+  .accounting-value {
+    font-size: clamp(22px, 6vw, 32px);
+  }
 
   .branch-grid {
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -444,8 +555,7 @@ html, body {
   }
 
   .hero-stat .stat-value,
-  .hero-stat:nth-child(4) .stat-value,
-  .hero-stat:nth-child(5) .stat-value {
+  .hero-stat.big .stat-value {
     font-size: clamp(18px, 6vw, 26px);
   }
 
@@ -456,4 +566,17 @@ html, body {
   .view-tabs {
     justify-content: center;
   }
+}
+
+/* Máy tính: số liệu nằm giữa khoảng trống phía trên thanh tiến độ cho cân với cột phải (màn Doanh thu) */
+@media (min-width: 861px) {
+  .hero:not(.five) { grid-template-rows: 1fr auto; }
+  .hero:not(.five) > .hero-stat { align-self: center; }
+
+  /* Màn Sản lượng: khối Tổng 5 ô trên cả chiều ngang như cũ */
+  .top-row.single { grid-template-columns: 1fr; }
+  .hero.five { grid-template-columns: 1.7fr 1.7fr 1.7fr 0.9fr 1.1fr; }
+  .hero.five .hero-stat .stat-value { font-size: clamp(13px, 1.05vw, 24px); }
+  .hero.five .hero-stat.big .stat-value { font-size: clamp(16px, 1.4vw, 30px); }
+  .hero.five .hero-stat.hero-time { display: flex; }
 }

@@ -1,20 +1,13 @@
-//const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypxVOhXyHz5Gfq2tXkI7_NkIRW7oOon5UyLNH8mwQ-6noUkDbq4PGr8psI_bLJOMH6yQ/exec";
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkwjxj53CzoaTXa6py4Hg438Eibz34iRWa56qCd_tj70rvAaS5Gl5xhx3Sq_YzDiw9PQ/exec";
+// ====== CẤU HÌNH ======
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyorZAVs5EOeU8lxdEZR-hxV_JG7eBiuU1vJKZOiUL9d3hOylNZm2fIL1w4a1CYcCvDqg/exec";
 const TOTAL_ROW_LABEL = "Tổng cộng";
 const ACCOUNTING_ROW_NAME = "Kế toán"; 
-const HIDDEN_BRANCHES = ["PKH"];
-const REFRESH_SECONDS = 300;
+const HIDDEN_BRANCHES = ["PKH"]; 
+const REFRESH_SECONDS = 300;     
+const ROTATE_SECONDS = 150;     
+const OUTPUT_UNIT = "";           
 
-const heroSection = document.getElementById('heroSection');
-const accountingSection = document.getElementById('accountingSection');
-const branchGrid = document.getElementById('branchGrid');
-const updatedAtEl = document.getElementById('updatedAt');
-const clockEl = document.getElementById('clock');
-const pageTitleEl = document.getElementById('pageTitle');
-const pageSubtitleEl = document.getElementById('pageSubtitle');
-const viewTabs = document.querySelectorAll('.view-tab');
-
-let currentView = 'year';
+const ROTATE_MS = ROTATE_SECONDS * 1000;
 
 const numberText = (n) => Math.round(n).toLocaleString('vi-VN');
 const percentText = (n) => n.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
@@ -25,7 +18,7 @@ function tierOf(percent) {
   return 'tier-good';
 }
 
-// ---- Đọc dữ liệu thô từ Apps Script và tự xử lý nghiệp vụ ----
+// ---- Đọc dữ liệu từ Apps Script ----
 
 function toNumber(v) {
   if (typeof v === 'number') return v;
@@ -50,10 +43,8 @@ function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
-
-function parseYearRows(rows) {
+function parseYearRows(rows, accounting) {
   const allItems = [];
-  let accounting = null;
 
   rows.forEach((row) => {
     const name = String(row[0] || '').trim();
@@ -64,20 +55,14 @@ function parseYearRows(rows) {
     const done = toNumber(row[2]);
     const remain = toNumber(row[3]);
 
-    if (isAccountingRow(name)) {
-      accounting = { done }; 
-      return;
-    }
-
     const percent = plan !== 0 ? round2((done / plan) * 100) : 100;
     allItems.push({ name, plan, done, remain, percent });
   });
 
   if (allItems.length === 0) return { main: null, accounting };
 
- 
   const totalPlan = allItems.reduce((s, i) => s + i.plan, 0);
-  const totalDone = allItems.reduce((s, i) => s + i.done, 0) + (accounting ? accounting.done : 0);
+  const totalDone = allItems.reduce((s, i) => s + i.done, 0);
   const totalRemain = allItems.reduce((s, i) => s + i.remain, 0);
   const totalPercent = totalPlan !== 0 ? round2((totalDone / totalPlan) * 100) : 100;
 
@@ -121,9 +106,10 @@ function parseQuarterRows(rows, quarterKey) {
   if (names.length === 0) return { main: null, accounting };
 
   let totalPlan = 0, totalDone = 0;
-    names.forEach((n) => { totalPlan += groups[n].plan; totalDone += groups[n].done; });
-    const totalRemain = totalPlan - totalDone;    
-    totalDone += accounting ? accounting.done : 0; 
+  names.forEach((n) => { totalPlan += groups[n].plan; totalDone += groups[n].done; });
+  const totalRemain = totalPlan - totalDone;
+  const totalPercent = totalPlan !== 0 ? round2((totalDone / totalPlan) * 100) : 100;
+
   const branches = names
     .filter((n) => !isHidden(n))
     .map((name) => {
@@ -136,6 +122,7 @@ function parseQuarterRows(rows, quarterKey) {
   return {
     main: {
       total: { name: quarterKey.toUpperCase(), plan: totalPlan, done: totalDone, remain: totalRemain, percent: totalPercent },
+      branches,
     },
     accounting,
   };
@@ -166,282 +153,415 @@ function animateValue(el, toValue, { isPercent = false, duration = 800, format =
   el.dataset.value = to;
 }
 
-
-let heroBuilt = false;
-
-function buildHero() {
-  heroSection.innerHTML = `
-    <div class="hero-stat">
-      <div class="stat-label">Kế hoạch</div>
-      <div class="stat-value"><span class="value-num" id="heroPlan" data-value="0">0</span><span class="unit">VNĐ</span></div>
-    </div>
-    <div class="hero-stat">
-      <div class="stat-label">Đã thực hiện</div>
-      <div class="stat-value"><span class="value-num" id="heroDone" data-value="0">0</span><span class="unit">VNĐ</span></div>
-    </div>
-    <div class="hero-stat">
-      <div class="stat-label">Còn lại</div>
-      <div class="stat-value"><span class="value-num" id="heroRemain" data-value="0">0</span><span class="unit">VNĐ</span></div>
-    </div>
-    <div class="hero-stat percent">
-      <div class="stat-label">% hoàn thành</div>
-      <div class="stat-value"><span class="value-num" id="heroPercent" data-value="0">0,00%</span></div>
-    </div>
-    <div class="hero-stat">
-      <div class="stat-label">Thời gian còn lại</div>
-      <div class="stat-value"><span class="value-num" id="heroDaysLeft" data-value="0">0</span><span class="unit" id="heroDaysUnit">ngày</span></div>
-    </div>
-    <div class="hero-stat hero-accounting">
-      <div class="stat-label">Doanh thu Kế toán</div>
-      <div class="stat-value"><span class="value-num" id="heroAcctDone" data-value="0">0</span><span class="unit">VNĐ</span></div>
-    </div>
-    <div class="hero-progress"><div class="hero-progress-fill" id="heroProgressFill" style="width:0%"></div></div>
-  `;
-  heroBuilt = true;
+function compareBranches(a, b) {
+  const aNoPlan = a.plan === 0;
+  const bNoPlan = b.plan === 0;
+  if (aNoPlan && bNoPlan) return b.done - a.done;
+  if (aNoPlan) return 1;
+  if (bNoPlan) return -1;
+  return b.percent - a.percent;
 }
 
-function updateHero(total) {
-  if (!total) {
-    heroSection.innerHTML = '<div class="hero-loading">Chưa có dữ liệu tổng.</div>';
-    heroBuilt = false;
-    return;
-  }
-
-  if (!heroBuilt) buildHero();
-
-  animateValue(document.getElementById('heroPlan'), total.plan);
-  animateValue(document.getElementById('heroDone'), total.done);
-  animateValue(document.getElementById('heroRemain'), total.remain);
-  animateValue(document.getElementById('heroPercent'), total.percent, { isPercent: true });
-
-  document.getElementById('heroProgressFill').style.width = Math.min(100, total.percent) + '%';
-
-  const tier = tierOf(total.percent);
-  document.getElementById('heroProgressFill').className = `hero-progress-fill ${tier}`;
-  document.getElementById('heroPercent').closest('.hero-stat').className = `hero-stat percent ${tier}`;
-}
-
-let accountingBuilt = false;
-
-function buildAccountingPanel() {
-  accountingSection.innerHTML = `
-    <div class="accounting-title">Doanh thu Kế toán</div>
-    <div class="accounting-value"><span class="value-num acct-done" data-value="0">0</span><span class="unit">VNĐ</span></div>
-  `;
-  accountingBuilt = true;
-}
-
-function updateAccounting(accounting) {
-    const heroAcctEl = document.getElementById('heroAcctDone'); // bản nằm trong khối Tổng (dùng cho điện thoại)
-    const heroAcctStat = heroAcctEl ? heroAcctEl.closest('.hero-stat') : null;
-
-    if (!accounting) {
-        accountingSection.innerHTML = '<div class="accounting-title">Doanh thu Kế toán</div><div class="empty-state" style="padding:2vh 0;">Chưa có dữ liệu.</div>';
-        accountingBuilt = false;
-        if (heroAcctStat) heroAcctStat.style.display = 'none';
-        return;
-    }
-
-    if (!accountingBuilt) buildAccountingPanel();
-    animateValue(accountingSection.querySelector('.acct-done'), accounting.done);
-
-    if (heroAcctStat) heroAcctStat.style.display = '';
-    if (heroAcctEl) animateValue(heroAcctEl, accounting.done);
-}
-// ---- Lưới chi nhánh ----
-const branchCards = new Map();
-
-function createBranchCard(b) {
-  const card = document.createElement('div');
-  card.className = `branch-card ${tierOf(b.percent)}`;
-  card.dataset.name = b.name;
-  card.innerHTML = `
-    <div class="branch-name">${b.name}</div>
-    <div class="branch-row"><span>Kế hoạch</span><span><span class="value-num plan" data-value="0">0</span><span class="unit">VNĐ</span></span></div>
-    <div class="branch-row"><span>Đã thực hiện</span><span><span class="value-num done" data-value="0">0</span><span class="unit">VNĐ</span></span></div>
-    <div class="branch-row"><span>Còn lại</span><span><span class="value-num remain" data-value="0">0</span><span class="unit">VNĐ</span></span></div>
-    <div class="branch-progress"><div class="branch-progress-fill" style="width:0%"></div></div>
-    <div class="branch-percent"><span class="value-num percent" data-value="0">0,00%</span></div>
-  `;
-  branchGrid.appendChild(card);
-  branchCards.set(b.name, card);
-  return card;
-}
-
-function updateBranchCard(card, b) {
-  const tier = tierOf(b.percent);
-  const noPlan = b.plan === 0;
-
-  card.className = `branch-card ${tier}${noPlan ? ' no-plan' : ''}`;
-
-  animateValue(card.querySelector('.plan'), b.plan);
-  animateValue(card.querySelector('.done'), b.done);
-  animateValue(card.querySelector('.remain'), b.remain);
-
-  if (!noPlan) {
-    animateValue(card.querySelector('.percent'), b.percent, { isPercent: true });
-    card.querySelector('.branch-progress-fill').style.width = Math.min(100, b.percent) + '%';
-  }
-}
-
-function renderBranches(branches) {
-  if (!branches || branches.length === 0) {
-    branchGrid.innerHTML = '<div class="empty-state">Chưa có dữ liệu chi nhánh.</div>';
-    branchCards.clear();
-    return;
-  }
-
-
-  function compareBranches(a, b) {
-    const aNoPlan = a.plan === 0;
-    const bNoPlan = b.plan === 0;
-
-    if (aNoPlan && bNoPlan) return b.done - a.done;
-    if (aNoPlan) return 1;
-    if (bNoPlan) return -1;
-
-    return b.percent - a.percent;
-  }
-
-  const sorted = branches.slice().sort(compareBranches);
-  const seen = new Set();
-
-  sorted.forEach((b) => {
-    seen.add(b.name);
-    let card = branchCards.get(b.name);
-    if (!card) {
-      card = createBranchCard(b);
-    } else {
-      branchGrid.appendChild(card); 
-    }
-    updateBranchCard(card, b);
-  });
-
-  for (const [name, card] of branchCards.entries()) {
-    if (!seen.has(name)) {
-      card.remove();
-      branchCards.delete(name);
-    }
-  }
-
-  pageSubtitleEl.textContent = `${branches.length} chi nhánh & nhà máy`;
-}
-
-// ---- Tiêu đề động theo năm/quý hiện tại ----
-function updateTitle() {
-  const year = new Date().getFullYear();
-  pageTitleEl.textContent = currentView === 'year'
-    ? `KẾ HOẠCH DOANH THU ${year}`
-    : `KẾ HOẠCH DOANH THU ${currentView.toUpperCase()}/${year}`;
-}
-
-// ---- Đếm thời gian còn lại (hết năm / hết quý) ----
 function getQuarterEnd(year, qNum) {
   return new Date(year, qNum * 3, 0, 23, 59, 59);
 }
 
-function updateTimeRemaining() {
-  const daysEl = document.getElementById('heroDaysLeft');
-  const unitEl = document.getElementById('heroDaysUnit');
-  if (!daysEl) return; 
+// ================
+//  MỘT MÀN HÌNH
+// ================
+function createScreen(root, cfg) {
+  const heroEl = root.querySelector('.hero');
+  const acctEl = root.querySelector('.accounting-panel');
+  const gridEl = root.querySelector('.branch-grid');
+  const cards = new Map();
+  const state = { subtitle: '', updated: '' };
 
-  const now = new Date();
-  const year = now.getFullYear();
-  const end = currentView === 'year'
-    ? new Date(year, 11, 31, 23, 59, 59)
-    : getQuarterEnd(year, parseInt(currentView.replace('q', ''), 10));
+  let view = 'year';
+  let heroBuilt = false;
+  let acctBuilt = false;
+  let hasLoadedOnce = false;
+  let refreshTimer = null;
+  let loadToken = 0; 
 
-  if (end < now) {
-    daysEl.dataset.value = 0;
-    daysEl.textContent = 'Đã kết thúc';
-    if (unitEl) unitEl.style.display = 'none';
-    return;
+  if (cfg.timeInHero) heroEl.classList.add('five'); 
+  if (acctEl) {
+    acctEl.innerHTML = `
+      ${cfg.hasAccounting ? '<div class="aside-block"><div class="accounting-title">Doanh thu Kế toán</div><div class="acct-body"></div></div>' : ''}
+      <div class="aside-block">
+        <div class="accounting-title">Thời gian còn lại</div>
+        <div class="accounting-value"><span class="value-num js-days" data-value="0">0</span><span class="unit js-days-unit">ngày</span></div>
+      </div>`;
   }
 
-  if (unitEl) unitEl.style.display = '';
-  const days = Math.ceil((end - now) / 86400000);
-  animateValue(daysEl, days, { format: (n) => Math.round(n).toLocaleString('vi-VN') });
-}
+  const unitHtml = cfg.unit ? `<span class="unit">${cfg.unit}</span>` : '';
+  const $ = (sel) => heroEl.querySelector(sel);
 
-// ---- Vòng lặp tải dữ liệu ----
-let refreshTimer = null;
-let hasLoadedOnce = false;
+  function buildHero() {
+    heroEl.innerHTML = `
+      <div class="hero-stat">
+        <div class="stat-label">Kế hoạch</div>
+        <div class="stat-value"><span class="value-num js-plan" data-value="0">0</span>${unitHtml}</div>
+      </div>
+      <div class="hero-stat">
+        <div class="stat-label">Đã thực hiện</div>
+        <div class="stat-value"><span class="value-num js-done" data-value="0">0</span>${unitHtml}</div>
+      </div>
+      <div class="hero-stat">
+        <div class="stat-label">Còn lại</div>
+        <div class="stat-value"><span class="value-num js-remain" data-value="0">0</span>${unitHtml}</div>
+      </div>
+      <div class="hero-stat big percent">
+        <div class="stat-label">% hoàn thành</div>
+        <div class="stat-value"><span class="value-num js-percent" data-value="0">0,00%</span></div>
+      </div>
+      <div class="hero-stat hero-time${cfg.timeInHero ? ' big' : ''}">
+        <div class="stat-label">Thời gian còn lại</div>
+        <div class="stat-value"><span class="value-num js-days" data-value="0">0</span><span class="unit js-days-unit">ngày</span></div>
+      </div>
+      ${cfg.hasAccounting ? `
+      <div class="hero-stat hero-accounting">
+        <div class="stat-label">Doanh thu Kế toán</div>
+        <div class="stat-value"><span class="value-num js-acct-hero" data-value="0">0</span><span class="unit">VNĐ</span></div>
+      </div>` : ''}
+      <div class="hero-progress"><div class="hero-progress-fill js-fill" style="width:0%"></div></div>
+    `;
+    heroBuilt = true;
+  }
 
-function scheduleNextRefresh() {
-  if (refreshTimer) clearTimeout(refreshTimer);
-  const jitter = Math.random() * 30000; 
-  refreshTimer = setTimeout(loadData, REFRESH_SECONDS * 1000 + jitter);
-}
-
-async function loadData() {
-  updateTitle();
-
-  try {
-    const res = await fetch(`${APPS_SCRIPT_URL}?view=${currentView}`, { cache: 'no-store' });
-    const data = await res.json();
-
-    if (data.error) throw new Error(data.error);
-
-    const parsed = currentView === 'year'
-      ? parseYearRows(data.rows || [])
-      : parseQuarterRows(data.rows || [], currentView);
-
-      if (!parsed.main) {
-      updateAccounting(parsed.accounting);
-
-          const msg = currentView === 'year'
-              ? 'Không đọc được dữ liệu năm.'
-              : `Chưa có dữ liệu cho ${currentView.toUpperCase()}/${new Date().getFullYear()}.`;
-
-      if (!hasLoadedOnce) {
-        heroSection.innerHTML = `<div class="error-state">${msg}</div>`;
-        heroBuilt = false;
-      } else {
-        updatedAtEl.textContent = msg;
-      }
-      scheduleNextRefresh();
+  function updateHero(total) {
+    if (!total) {
+      heroEl.innerHTML = '<div class="hero-loading">Chưa có dữ liệu tổng.</div>';
+      heroBuilt = false;
       return;
     }
+    if (!heroBuilt) buildHero();
 
-      updateHero(parsed.main.total);
-      updateAccounting(parsed.accounting);
-    renderBranches(parsed.main.branches);
-    updateTimeRemaining();
+    animateValue($('.js-plan'), total.plan);
+    animateValue($('.js-done'), total.done);
+    animateValue($('.js-remain'), total.remain);
+    animateValue($('.js-percent'), total.percent, { isPercent: true });
+
+    const tier = tierOf(total.percent);
+    $('.js-fill').style.width = Math.min(100, total.percent) + '%';
+    $('.js-fill').className = `hero-progress-fill js-fill ${tier}`;
+    $('.js-percent').closest('.hero-stat').className = `hero-stat big percent ${tier}`;
+  }
+
+  function updateAccounting(accounting) {
+    if (!cfg.hasAccounting || !acctEl) return;
+    const body = acctEl.querySelector('.acct-body');
+
+    if (!accounting) {
+      body.innerHTML = '<div class="empty-state" style="padding:1vh 0;">Chưa có dữ liệu.</div>';
+      acctBuilt = false;
+      return;
+    }
+    if (!acctBuilt) {
+      body.innerHTML = '<div class="accounting-value"><span class="value-num acct-done" data-value="0">0</span><span class="unit">VNĐ</span></div>';
+      acctBuilt = true;
+    }
+    animateValue(body.querySelector('.acct-done'), accounting.done);
+    const heroAcct = heroEl.querySelector('.js-acct-hero');
+    if (heroAcct) animateValue(heroAcct, accounting.done);
+  }
+
+  function createCard(b) {
+    const card = document.createElement('div');
+    card.dataset.name = b.name;
+    card.innerHTML = `
+      <div class="branch-name"></div>
+      <div class="branch-row"><span>Kế hoạch</span><span><span class="value-num plan" data-value="0">0</span>${unitHtml}</span></div>
+      <div class="branch-row"><span>Đã thực hiện</span><span><span class="value-num done" data-value="0">0</span>${unitHtml}</span></div>
+      <div class="branch-row"><span>Còn lại</span><span><span class="value-num remain" data-value="0">0</span>${unitHtml}</span></div>
+      <div class="branch-progress"><div class="branch-progress-fill" style="width:0%"></div></div>
+      <div class="branch-percent"><span class="value-num percent" data-value="0">0,00%</span></div>
+    `;
+    card.querySelector('.branch-name').textContent = b.name;
+    gridEl.appendChild(card);
+    cards.set(b.name, card);
+    return card;
+  }
+
+  function updateCard(card, b) {
+    const noPlan = b.plan === 0;
+    card.className = `branch-card ${tierOf(b.percent)}${noPlan ? ' no-plan' : ''}`;
+
+    animateValue(card.querySelector('.plan'), b.plan);
+    animateValue(card.querySelector('.done'), b.done);
+    animateValue(card.querySelector('.remain'), b.remain);
+
+    if (!noPlan) {
+      animateValue(card.querySelector('.percent'), b.percent, { isPercent: true });
+      card.querySelector('.branch-progress-fill').style.width = Math.min(100, b.percent) + '%';
+    }
+  }
+
+  function renderBranches(branches) {
+    if (!branches || branches.length === 0) {
+      gridEl.innerHTML = `<div class="empty-state">${cfg.emptyText}</div>`;
+      cards.clear();
+      return;
+    }
+    gridEl.querySelectorAll('.empty-state').forEach((e) => e.remove());
+
+    const sorted = branches.filter((b) => !(cfg.hideEmpty && b.plan === 0 && b.done === 0)).sort(compareBranches);
+    branches = sorted;
+    const seen = new Set();
+
+    sorted.forEach((b, i) => {
+      seen.add(b.name);
+      let card = cards.get(b.name);
+      if (!card) card = createCard(b);
+      else gridEl.appendChild(card); 
+      card.style.setProperty('--i', i);
+      updateCard(card, b);
+    });
+
+    for (const [name, card] of cards.entries()) {
+      if (!seen.has(name)) { card.remove(); cards.delete(name); }
+    }
+
+    state.subtitle = cfg.subtitle(branches.length);
+  }
+
+  function updateTimeRemaining() {
+    const dayEls = root.querySelectorAll('.js-days');
+    if (!dayEls.length) return;
 
     const now = new Date();
-    updatedAtEl.textContent = `Cập nhật lúc ${now.toLocaleTimeString('vi-VN')} ${now.toLocaleDateString('vi-VN')}`;
-    hasLoadedOnce = true;
-    scheduleNextRefresh();
-  } catch (err) {
-    if (!hasLoadedOnce) {
-      heroSection.innerHTML = `<div class="error-state">Không tải được dữ liệu: ${err.message}</div>`;
-    } else {
-      updatedAtEl.textContent = 'Mất kết nối, đang hiển thị số liệu cũ (thử lại sau)';
-    }
-    scheduleNextRefresh();
+    const year = now.getFullYear();
+    const end = view === 'year'
+      ? new Date(year, 11, 31, 23, 59, 59)
+      : getQuarterEnd(year, parseInt(view.replace('q', ''), 10));
+    const over = end < now;
+    const days = Math.ceil((end - now) / 86400000);
+
+    dayEls.forEach((daysEl) => {
+      const unitEl = daysEl.parentElement.querySelector('.js-days-unit');
+      if (over) {
+        daysEl.dataset.value = 0;
+        daysEl.textContent = 'Đã kết thúc';
+        if (unitEl) unitEl.style.display = 'none';
+      } else {
+        if (unitEl) unitEl.style.display = '';
+        animateValue(daysEl, days, { format: (n) => Math.round(n).toLocaleString('vi-VN') });
+      }
+    });
   }
+
+  async function fetchRows() {
+    const res = await fetch(`${APPS_SCRIPT_URL}?view=${cfg.apiView(view)}`, { cache: 'no-store' });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data.rows || [];
+  }
+
+
+  async function fetchAccounting() {
+    try {
+      const res = await fetch(`${APPS_SCRIPT_URL}?view=accounting`, { cache: 'no-store' });
+      const data = await res.json();
+      if (data.error || data.value === '' || data.value == null) return null;
+      return { done: toNumber(data.value) };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function scheduleNextRefresh() {
+    if (refreshTimer) clearTimeout(refreshTimer);
+    const jitter = Math.random() * 30000; 
+    refreshTimer = setTimeout(load, REFRESH_SECONDS * 1000 + jitter);
+  }
+
+  async function load() {
+    const token = ++loadToken;
+    try {
+      const useCell = cfg.hasAccounting && view === 'year'; 
+      const [rows, accountingCell] = await Promise.all([
+        fetchRows(),
+        useCell ? fetchAccounting() : Promise.resolve(null),
+      ]);
+      if (token !== loadToken) return;
+
+      const parsed = cfg.hasQuarters && view !== 'year'
+        ? parseQuarterRows(rows, view)
+        : parseYearRows(rows, accountingCell);
+
+      if (!parsed.main) {
+        updateAccounting(parsed.accounting);
+        const msg = view === 'year'
+          ? cfg.noDataText
+          : `Chưa có dữ liệu cho ${view.toUpperCase()}/${new Date().getFullYear()}.`;
+        if (!hasLoadedOnce) {
+          heroEl.innerHTML = `<div class="error-state">${msg}</div>`;
+          heroBuilt = false;
+        } else {
+          state.updated = msg;
+        }
+        onChange();
+        scheduleNextRefresh();
+        return;
+      }
+
+      updateHero(parsed.main.total);
+      updateAccounting(parsed.accounting); 
+      renderBranches(parsed.main.branches);
+      updateTimeRemaining();
+
+      const now = new Date();
+      state.updated = `Cập nhật lúc ${now.toLocaleTimeString('vi-VN')} ${now.toLocaleDateString('vi-VN')}`;
+      hasLoadedOnce = true;
+      onChange();
+      scheduleNextRefresh();
+    } catch (err) {
+      if (token !== loadToken) return;
+      if (!hasLoadedOnce) {
+        heroEl.innerHTML = `<div class="error-state">Không tải được dữ liệu: ${err.message}</div>`;
+      } else {
+        state.updated = 'Mất kết nối, đang hiển thị số liệu cũ (thử lại sau)';
+      }
+      onChange();
+      scheduleNextRefresh();
+    }
+  }
+
+  function setView(v) {
+    if (v === view) return;
+    view = v;
+    hasLoadedOnce = false;
+    cards.clear();
+    gridEl.innerHTML = '';
+    heroEl.innerHTML = '<div class="hero-loading">Đang tải dữ liệu…</div>';
+    heroBuilt = false;
+    load();
+  }
+
+  let onChange = () => {};
+  return {
+    root, state, load, setView, updateTimeRemaining,
+    getView: () => view,
+    onChange: (fn) => { onChange = fn; },
+  };
 }
 
-// ---- Chuyển đổi Năm / Q1-Q4 ----
-function switchView(view) {
-  if (view === currentView) return;
-  currentView = view;
-  hasLoadedOnce = false;
+// ==================
+//  HAI MÀN HÌNH 
+// ==================
+const pageTitleEl = document.getElementById('pageTitle');
+const pageSubtitleEl = document.getElementById('pageSubtitle');
+const updatedAtEl = document.getElementById('updatedAt');
+const clockEl = document.getElementById('clock');
+const titleBlock = document.getElementById('titleBlock');
+const viewTabsEl = document.getElementById('viewTabs');
+const viewTabs = document.querySelectorAll('.view-tab');
+const screenTabs = document.querySelectorAll('.screen-tab');
+const rotateFill = document.getElementById('rotateBarFill');
 
-  branchCards.clear();
-  branchGrid.innerHTML = '';
-  heroSection.innerHTML = '<div class="hero-loading">Đang tải dữ liệu…</div>';
-  heroBuilt = false;
+const screens = {
+  revenue: createScreen(document.getElementById('screenRevenue'), {
+    unit: 'VNĐ',
+    hasAccounting: true,
+    hasQuarters: true,
+    apiView: (v) => v,
+    emptyText: 'Chưa có dữ liệu chi nhánh.',
+    noDataText: 'Không đọc được dữ liệu năm.',
+    subtitle: (n) => `${n} chi nhánh & nhà máy`,
+  }),
+  output: createScreen(document.getElementById('screenOutput'), {
+    unit: OUTPUT_UNIT,
+    hasAccounting: false,
+    hasQuarters: false,
+    timeInHero: true, 
+    hideEmpty: true, 
+    apiView: () => 'output',
+    emptyText: 'Chưa có dữ liệu sản lượng.',
+    noDataText: 'Chưa có dữ liệu sản lượng.',
+    subtitle: (n) => `${n} đơn vị`,
+  }),
+};
 
-  viewTabs.forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.view === view);
-  });
+let activeKey = 'revenue';
 
-  loadData();
+function titleFor(key) {
+  const year = new Date().getFullYear();
+  const word = key === 'output' ? 'SẢN LƯỢNG' : 'DOANH THU';
+  const view = screens[key].getView();
+  return view === 'year' || key === 'output'
+    ? `KẾ HOẠCH ${word} ${year}`
+    : `KẾ HOẠCH ${word} ${view.toUpperCase()}/${year}`;
 }
 
+
+function refreshHeader() {
+  const s = screens[activeKey];
+  pageTitleEl.textContent = titleFor(activeKey);
+  pageSubtitleEl.textContent = s.state.subtitle;
+  updatedAtEl.textContent = s.state.updated;
+}
+Object.values(screens).forEach((s) => s.onChange(refreshHeader));
+
+// ---- Tự động chuyển màn hình----
+let rotateTimer = null;
+let transitionTimer = null;
+
+function restartRotation() {
+  if (rotateTimer) clearTimeout(rotateTimer);
+  rotateTimer = setTimeout(() => {
+    showScreen(activeKey === 'revenue' ? 'output' : 'revenue');
+  }, ROTATE_MS);
+
+
+  rotateFill.classList.remove('run');
+  void rotateFill.offsetWidth;
+  rotateFill.style.animationDuration = ROTATE_MS + 'ms';
+  rotateFill.classList.add('run');
+}
+
+function showScreen(key) {
+  restartRotation(); 
+
+  if (key === activeKey) return;
+
+
+  if (transitionTimer) clearTimeout(transitionTimer);
+  Object.values(screens).forEach((s) => s.root.classList.remove('leaving', 'entering'));
+
+  const from = screens[activeKey].root;
+  const to = screens[key].root;
+
+  from.classList.remove('is-active');
+  from.classList.add('leaving');
+  to.classList.add('is-active', 'entering');
+
+  activeKey = key;
+
+  screenTabs.forEach((b) => b.classList.toggle('active', b.dataset.screen === key));
+  viewTabsEl.classList.toggle('is-hidden', key === 'output'); // Năm/Q1-Q4 chỉ dùng cho Doanh thu
+
+  titleBlock.classList.remove('swap');
+  void titleBlock.offsetWidth;
+  titleBlock.classList.add('swap');
+  refreshHeader();
+
+  transitionTimer = setTimeout(() => {
+    from.classList.remove('leaving');
+    to.classList.remove('entering');
+  }, 900);
+}
+
+screenTabs.forEach((btn) => {
+  btn.addEventListener('click', () => showScreen(btn.dataset.screen));
+});
+
+// ---- Chuyển Năm/Quý ----
 viewTabs.forEach((btn) => {
-  btn.addEventListener('click', () => switchView(btn.dataset.view));
+  btn.addEventListener('click', () => {
+    viewTabs.forEach((b) => b.classList.toggle('active', b === btn));
+    screens.revenue.setView(btn.dataset.view);
+    refreshHeader();
+    restartRotation(); 
+  });
 });
 
 function tickClock() {
@@ -450,7 +570,9 @@ function tickClock() {
 
 tickClock();
 setInterval(tickClock, 1000);
-setInterval(updateTimeRemaining, 60000);
+setInterval(() => Object.values(screens).forEach((s) => s.updateTimeRemaining()), 60000);
 
-updateTitle();
-loadData();
+refreshHeader();
+screens.revenue.load();
+screens.output.load();
+restartRotation();
