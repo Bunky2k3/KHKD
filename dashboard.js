@@ -1,10 +1,22 @@
 // ====== CẤU HÌNH ======
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyorZAVs5EOeU8lxdEZR-hxV_JG7eBiuU1vJKZOiUL9d3hOylNZm2fIL1w4a1CYcCvDqg/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzCEV2pewDrYmWS5qDsRNE8YGJ_R3NWDFjL92qtUl_pBksI3arYYgGlbjwoH7iKbOyAEQ/exec";
 const TOTAL_ROW_LABEL = "Tổng cộng";
 const ACCOUNTING_ROW_NAME = "Kế toán"; 
+
+const ACCOUNTING_ALIASES = {
+  "Nhà máy 1": "NM1",
+  "Nhà máy 2": "NM2",
+  "Nhà máy 3": "NM3",
+  "Nhà máy 4": "NM4",
+  "Nhà máy 5": "NM5",
+  "POT Danang": "POT ĐN",
+  "POT Badinh": "POT BĐ",
+  "TTKD & PTTT": "VPCT",
+};
+const ACCOUNTING_TOTAL_COLUMN = "Hợp nhất";
 const HIDDEN_BRANCHES = ["PKH"]; 
 const REFRESH_SECONDS = 300;     
-const ROTATE_SECONDS = 150;     
+const ROTATE_SECONDS = 150;      
 const OUTPUT_UNIT = "";           
 
 const ROTATE_MS = ROTATE_SECONDS * 1000;
@@ -23,7 +35,10 @@ function tierOf(percent) {
 function toNumber(v) {
   if (typeof v === 'number') return v;
   if (!v) return 0;
-  const n = Number(String(v).replace(/[^\d.-]/g, ''));
+  let s = String(v).replace(/[^\d.,-]/g, '');
+  if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, ''); 
+  s = s.replace(/,/g, '.');
+  const n = Number(s);
   return isNaN(n) ? 0 : n;
 }
 
@@ -43,13 +58,14 @@ function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
+
 function parseYearRows(rows, accounting) {
   const allItems = [];
 
   rows.forEach((row) => {
     const name = String(row[0] || '').trim();
     if (!name) return;
-    if (normalizeText(name) === normalizeText(TOTAL_ROW_LABEL)) return; 
+    if (normalizeText(name) === normalizeText(TOTAL_ROW_LABEL)) return;
 
     const plan = toNumber(row[1]);
     const done = toNumber(row[2]);
@@ -61,6 +77,7 @@ function parseYearRows(rows, accounting) {
 
   if (allItems.length === 0) return { main: null, accounting };
 
+  
   const totalPlan = allItems.reduce((s, i) => s + i.plan, 0);
   const totalDone = allItems.reduce((s, i) => s + i.done, 0);
   const totalRemain = allItems.reduce((s, i) => s + i.remain, 0);
@@ -128,6 +145,7 @@ function parseQuarterRows(rows, quarterKey) {
   };
 }
 
+
 function animateValue(el, toValue, { isPercent = false, duration = 800, format = null } = {}) {
   const from = parseFloat(el.dataset.value || '0');
   const to = toValue;
@@ -152,7 +170,6 @@ function animateValue(el, toValue, { isPercent = false, duration = 800, format =
   requestAnimationFrame(frame);
   el.dataset.value = to;
 }
-
 function compareBranches(a, b) {
   const aNoPlan = a.plan === 0;
   const bNoPlan = b.plan === 0;
@@ -167,7 +184,7 @@ function getQuarterEnd(year, qNum) {
 }
 
 // ================
-//  MỘT MÀN HÌNH
+//   MÀN HÌNH MỘT 
 // ================
 function createScreen(root, cfg) {
   const heroEl = root.querySelector('.hero');
@@ -247,12 +264,13 @@ function createScreen(root, cfg) {
     $('.js-percent').closest('.hero-stat').className = `hero-stat big percent ${tier}`;
   }
 
-  function updateAccounting(accounting) {
+  function updateAccounting(accounting, reason) {
     if (!cfg.hasAccounting || !acctEl) return;
     const body = acctEl.querySelector('.acct-body');
 
     if (!accounting) {
-      body.innerHTML = '<div class="empty-state" style="padding:1vh 0;">Chưa có dữ liệu.</div>';
+      body.innerHTML = '<div class="empty-state" style="padding:1vh 0;font-size:0.8em;text-align:left;"></div>';
+      body.firstChild.textContent = reason ? 'Chưa có dữ liệu: ' + reason : 'Chưa có dữ liệu.';
       acctBuilt = false;
       return;
     }
@@ -273,6 +291,7 @@ function createScreen(root, cfg) {
       <div class="branch-row"><span>Kế hoạch</span><span><span class="value-num plan" data-value="0">0</span>${unitHtml}</span></div>
       <div class="branch-row"><span>Đã thực hiện</span><span><span class="value-num done" data-value="0">0</span>${unitHtml}</span></div>
       <div class="branch-row"><span>Còn lại</span><span><span class="value-num remain" data-value="0">0</span>${unitHtml}</span></div>
+      ${cfg.hasAccounting ? `<div class="branch-row acct-row" hidden><span>Doanh thu kế toán</span><span><span class="value-num acct" data-value="0">0</span>${unitHtml}</span></div>` : ''}
       <div class="branch-progress"><div class="branch-progress-fill" style="width:0%"></div></div>
       <div class="branch-percent"><span class="value-num percent" data-value="0">0,00%</span></div>
     `;
@@ -289,6 +308,22 @@ function createScreen(root, cfg) {
     animateValue(card.querySelector('.plan'), b.plan);
     animateValue(card.querySelector('.done'), b.done);
     animateValue(card.querySelector('.remain'), b.remain);
+
+    const acctRow = card.querySelector('.acct-row');
+    if (acctRow) {
+      const valEl = acctRow.querySelector('.acct');
+      const unitEl = acctRow.querySelector('.unit');
+      acctRow.hidden = b.acct === undefined;
+      acctRow.classList.toggle('acct-missing', b.acct === null);
+      if (b.acct != null) {
+        if (unitEl) unitEl.style.display = '';
+        animateValue(valEl, b.acct);
+      } else {
+        valEl.textContent = '—';
+        valEl.dataset.value = 0;
+        if (unitEl) unitEl.style.display = 'none';
+      }
+    }
 
     if (!noPlan) {
       animateValue(card.querySelector('.percent'), b.percent, { isPercent: true });
@@ -312,7 +347,7 @@ function createScreen(root, cfg) {
       seen.add(b.name);
       let card = cards.get(b.name);
       if (!card) card = createCard(b);
-      else gridEl.appendChild(card); 
+      else gridEl.appendChild(card);
       card.style.setProperty('--i', i);
       updateCard(card, b);
     });
@@ -361,11 +396,32 @@ function createScreen(root, cfg) {
     try {
       const res = await fetch(`${APPS_SCRIPT_URL}?view=accounting`, { cache: 'no-store' });
       const data = await res.json();
-      if (data.error || data.value === '' || data.value == null) return null;
-      return { done: toNumber(data.value) };
+      if (data.error) return { fail: 'Apps Script báo lỗi: ' + data.error };
+      if (!Array.isArray(data.rows)) return { fail: 'Apps Script chưa trả về danh sách đơn vị (có thể chưa deploy bản mới)' };
+
+      const byColumn = new Map();
+      data.rows.forEach(([name, value]) => {
+        if (!name || value === '' || value == null) return;
+        byColumn.set(normalizeText(name), toNumber(value));
+      });
+      if (byColumn.size === 0) return { fail: 'Dòng số liệu của tab Kế toán đang trống (kiểm tra ACCOUNTING_VALUE_ROW)' };
+
+      const total = byColumn.get(normalizeText(ACCOUNTING_TOTAL_COLUMN));
+      if (total == null) {
+        const names = data.rows.map((r) => r[0]).join(', ');
+        return { fail: `Không thấy cột "${ACCOUNTING_TOTAL_COLUMN}" có số. Các cột đọc được: ${names}` };
+      }
+      return { total: { done: total }, byColumn };
     } catch (e) {
-      return null;
+      return { fail: 'Không gọi được Apps Script: ' + e.message };
     }
+  }
+
+  function accountingOf(unitName, byColumn) {
+    const aliasKey = Object.keys(ACCOUNTING_ALIASES).find((k) => normalizeText(k) === normalizeText(unitName));
+    const column = aliasKey ? ACCOUNTING_ALIASES[aliasKey] : unitName;
+    const v = byColumn.get(normalizeText(column));
+    return v == null ? null : v;
   }
 
   function scheduleNextRefresh() {
@@ -377,19 +433,37 @@ function createScreen(root, cfg) {
   async function load() {
     const token = ++loadToken;
     try {
-      const useCell = cfg.hasAccounting && view === 'year'; 
-      const [rows, accountingCell] = await Promise.all([
+      const useSheet = cfg.hasAccounting && view === 'year';
+      const [rows, accountingData] = await Promise.all([
         fetchRows(),
-        useCell ? fetchAccounting() : Promise.resolve(null),
+        useSheet ? fetchAccounting() : Promise.resolve(null),
       ]);
       if (token !== loadToken) return;
 
+      const acct = accountingData && !accountingData.fail ? accountingData : null;
+      const acctFail = accountingData && accountingData.fail ? accountingData.fail : '';
+      if (acctFail) console.warn('[Doanh thu kế toán]', acctFail);
+
       const parsed = cfg.hasQuarters && view !== 'year'
         ? parseQuarterRows(rows, view)
-        : parseYearRows(rows, accountingCell);
+        : parseYearRows(rows, acct ? acct.total : null);
+
+     
+      if (parsed.main && useSheet) {
+        parsed.main.branches.forEach((b) => { b.acct = acct ? accountingOf(b.name, acct.byColumn) : null; });
+
+      
+        if (acct) {
+          const missing = parsed.main.branches.filter((b) => b.acct == null).map((b) => b.name);
+          if (missing.length) {
+            console.warn('[Doanh thu kế toán] Chưa ghép được tên các đơn vị: ' + missing.join(' | ')
+              + ' — Các cột bên kế toán đọc được: ' + [...acct.byColumn.keys()].join(' | '));
+          }
+        }
+      }
 
       if (!parsed.main) {
-        updateAccounting(parsed.accounting);
+        updateAccounting(parsed.accounting, acctFail);
         const msg = view === 'year'
           ? cfg.noDataText
           : `Chưa có dữ liệu cho ${view.toUpperCase()}/${new Date().getFullYear()}.`;
@@ -405,7 +479,7 @@ function createScreen(root, cfg) {
       }
 
       updateHero(parsed.main.total);
-      updateAccounting(parsed.accounting); 
+      updateAccounting(parsed.accounting, acctFail); 
       renderBranches(parsed.main.branches);
       updateTimeRemaining();
 
@@ -445,9 +519,9 @@ function createScreen(root, cfg) {
   };
 }
 
-// ==================
-//  HAI MÀN HÌNH 
-// ==================
+// =======================================
+//  MÀN HÌNH HAI + TỰ ĐỘNG ĐỔI MÀN HÌNH
+// =======================================
 const pageTitleEl = document.getElementById('pageTitle');
 const pageSubtitleEl = document.getElementById('pageSubtitle');
 const updatedAtEl = document.getElementById('updatedAt');
@@ -472,7 +546,7 @@ const screens = {
     unit: OUTPUT_UNIT,
     hasAccounting: false,
     hasQuarters: false,
-    timeInHero: true, 
+    timeInHero: true,
     hideEmpty: true, 
     apiView: () => 'output',
     emptyText: 'Chưa có dữ liệu sản lượng.',
@@ -501,15 +575,12 @@ function refreshHeader() {
 }
 Object.values(screens).forEach((s) => s.onChange(refreshHeader));
 
-// ---- Tự động chuyển màn hình----
-let rotateTimer = null;
+
+let rotateDeadline = 0;
 let transitionTimer = null;
 
 function restartRotation() {
-  if (rotateTimer) clearTimeout(rotateTimer);
-  rotateTimer = setTimeout(() => {
-    showScreen(activeKey === 'revenue' ? 'output' : 'revenue');
-  }, ROTATE_MS);
+  rotateDeadline = Date.now() + ROTATE_MS;
 
 
   rotateFill.classList.remove('run');
@@ -518,43 +589,71 @@ function restartRotation() {
   rotateFill.classList.add('run');
 }
 
+
+function forceShowScreen(key) {
+  Object.entries(screens).forEach(([k, s]) => {
+    s.root.classList.remove('leaving', 'entering');
+    s.root.classList.toggle('is-active', k === key);
+  });
+  activeKey = key;
+  screenTabs.forEach((b) => b.classList.toggle('active', b.dataset.screen === key));
+  viewTabsEl.classList.toggle('is-hidden', key === 'output');
+  try { refreshHeader(); } catch (e) { console.error(e); }
+}
+
 function showScreen(key) {
-  restartRotation(); 
+  restartRotation();
 
   if (key === activeKey) return;
 
+  try {
 
-  if (transitionTimer) clearTimeout(transitionTimer);
-  Object.values(screens).forEach((s) => s.root.classList.remove('leaving', 'entering'));
+    if (transitionTimer) clearTimeout(transitionTimer);
+    Object.values(screens).forEach((s) => s.root.classList.remove('leaving', 'entering'));
 
-  const from = screens[activeKey].root;
-  const to = screens[key].root;
+    const from = screens[activeKey].root;
+    const to = screens[key].root;
 
-  from.classList.remove('is-active');
-  from.classList.add('leaving');
-  to.classList.add('is-active', 'entering');
+    from.classList.remove('is-active');
+    from.classList.add('leaving');
+    to.classList.add('is-active', 'entering');
 
-  activeKey = key;
+    activeKey = key;
 
-  screenTabs.forEach((b) => b.classList.toggle('active', b.dataset.screen === key));
-  viewTabsEl.classList.toggle('is-hidden', key === 'output'); // Năm/Q1-Q4 chỉ dùng cho Doanh thu
+    screenTabs.forEach((b) => b.classList.toggle('active', b.dataset.screen === key));
+    viewTabsEl.classList.toggle('is-hidden', key === 'output'); 
 
-  titleBlock.classList.remove('swap');
-  void titleBlock.offsetWidth;
-  titleBlock.classList.add('swap');
-  refreshHeader();
+    titleBlock.classList.remove('swap');
+    void titleBlock.offsetWidth;
+    titleBlock.classList.add('swap');
+    refreshHeader();
 
-  transitionTimer = setTimeout(() => {
-    from.classList.remove('leaving');
-    to.classList.remove('entering');
-  }, 900);
+    transitionTimer = setTimeout(() => {
+      from.classList.remove('leaving');
+      to.classList.remove('entering');
+    }, 900);
+  } catch (err) {
+    console.error('Lỗi khi đổi màn, chuyển thẳng không hiệu ứng:', err);
+    forceShowScreen(key);
+  }
 }
+
+setInterval(() => {
+  if (Date.now() < rotateDeadline) return;
+  const next = activeKey === 'revenue' ? 'output' : 'revenue';
+  try {
+    showScreen(next);
+  } catch (err) {
+    console.error('Lỗi tự đổi màn:', err);
+    restartRotation();
+  }
+}, 1000);
 
 screenTabs.forEach((btn) => {
   btn.addEventListener('click', () => showScreen(btn.dataset.screen));
 });
 
-// ---- Chuyển Năm/Quý ----
+// ---- Chuyển Năm / Quý ----
 viewTabs.forEach((btn) => {
   btn.addEventListener('click', () => {
     viewTabs.forEach((b) => b.classList.toggle('active', b === btn));
@@ -573,6 +672,6 @@ setInterval(tickClock, 1000);
 setInterval(() => Object.values(screens).forEach((s) => s.updateTimeRemaining()), 60000);
 
 refreshHeader();
-screens.revenue.load();
-screens.output.load();
 restartRotation();
+screens.revenue.load();
+screens.output.load(); 

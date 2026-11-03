@@ -108,7 +108,7 @@ html, body {
   margin-top: 0.2rem;
 }
 
-/* ====== Nút chuyển Năm / Q1-Q4 ====== */
+/* ====== Nút chuyển Năm / Quý ====== */
 .view-tabs {
   display: flex;
   align-items: center;
@@ -137,7 +137,7 @@ html, body {
   color: #0B1524;
 }
 
-/* ====== Thanh công cụ: chuyển màn (Doanh thu / Sản lượng) + Năm/Quý ====== */
+/* ====== Thanh công cụ ====== */
 .toolbar {
   display: flex;
   align-items: center;
@@ -166,7 +166,7 @@ html, body {
 .view-tabs { transition: opacity 0.35s ease; }
 .view-tabs.is-hidden { opacity: 0; pointer-events: none; }
 
-/* ====== Thanh đếm ngược tới lúc tự đổi màn (nằm sát mép trên) ====== */
+/* ====== Thanh đếm ngược ====== */
 .rotate-bar {
   position: fixed;
   top: 0; left: 0; right: 0;
@@ -238,7 +238,7 @@ html, body {
   .screen.entering, .screen.leaving, .screen.entering .branch-card, .title-block.swap { animation-duration: 0.01s; animation-delay: 0s; }
 }
 
-/* ====== Hàng trên: khối Tổng (2/3) + Doanh thu Kế toán (1/3) ====== */
+/* ====== Hàng trên ====== */
 .top-row {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -246,7 +246,7 @@ html, body {
   align-items: stretch;
 }
 
-/* ====== Khối Tổng (hero): 5 ô trên 1 hàng, thanh tiến độ nằm dưới cùng ====== */
+/* ====== Khối Tổng ====== */
 .hero {
   background: linear-gradient(135deg, var(--surface-raised), var(--surface));
   border: 1px solid var(--border);
@@ -291,7 +291,7 @@ html, body {
   white-space: nowrap;
 }
 
-/* Ô % hoàn thành to hơn 3 ô số tiền */
+
 .hero-stat.big .stat-value {
   font-size: clamp(18px, 1.8vw, 36px);
 }
@@ -326,11 +326,11 @@ html, body {
 .hero-stat.percent.tier-mid  .stat-value { color: var(--mid); }
 .hero-stat.percent.tier-good .stat-value { color: var(--good); }
 
-/* Ô Thời gian còn lại + dòng Kế toán nằm trong khối Tổng: chỉ hiện trên điện thoại (desktop nằm ở cột phải) */
+
 .hero-stat.hero-time { display: none; }
 .hero-stat.hero-accounting { display: none; grid-column: 1 / -1; }
 
-/* ====== Ô Doanh thu Kế toán (chỉ 1 con số, không có kế hoạch) ====== */
+/* ====== Ô Doanh thu Kế toán ====== */
 .accounting-panel {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -353,7 +353,7 @@ html, body {
 .accounting-value {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: clamp(12px, min(1.2vw, 4.6cqi), 27px); /* bằng cỡ số của khối Tổng, tự co theo bề rộng ô */
+  font-size: clamp(12px, min(1.2vw, 4.6cqi), 27px); 
   font-variant-numeric: tabular-nums;
   line-height: 1.05;
   white-space: nowrap;
@@ -366,8 +366,7 @@ html, body {
   margin-left: 8px;
 }
 
-/* Cột phải gồm nhiều khối xếp dọc, ngăn cách bằng đường mảnh */
-/* Cột phải (màn Doanh thu): Doanh thu Kế toán và Thời gian còn lại nằm cạnh nhau trên 1 hàng */
+
 .accounting-panel {
   container-type: inline-size;
   display: grid;
@@ -457,7 +456,7 @@ html, body {
 .tier-good .branch-progress-fill { background: var(--good); }
 .tier-good .branch-percent { color: var(--good); }
 
-/* Đơn vị không có kế hoạch: ẩn thanh tiến độ và số % */
+/* Đơn vị không có kế hoạch */
 .branch-card.no-plan .branch-progress,
 .branch-card.no-plan .branch-percent {
   display: none;
@@ -481,7 +480,7 @@ html, body {
   margin: 0 auto;
 }
 
-/* ====== Hiệu ứng số liệu nảy nhẹ khi cập nhật ====== */
+/* ====== Hiệu ứng số liệu khi cập nhật ====== */
 .value-num.pop {
   animation: popScale 0.5s ease;
   display: inline-block;
@@ -493,7 +492,7 @@ html, body {
   100% { transform: scale(1); }
 }
 
-/* ====== Tablet / điện thoại ngang (dưới 860px) ====== */
+/* ====== Tablet / điện thoại ====== */
 @media (max-width: 860px) {
   .top-row {
     grid-template-columns: 1fr;
@@ -548,7 +547,7 @@ html, body {
   }
 }
 
-/* ====== Điện thoại đứng (dưới 480px) ====== */
+/* ====== Điện thoại đứng ====== */
 @media (max-width: 480px) {
   .hero {
     grid-template-columns: 1fr;
@@ -568,15 +567,24 @@ html, body {
   }
 }
 
-/* Máy tính: số liệu nằm giữa khoảng trống phía trên thanh tiến độ cho cân với cột phải (màn Doanh thu) */
+
 @media (min-width: 861px) {
   .hero:not(.five) { grid-template-rows: 1fr auto; }
   .hero:not(.five) > .hero-stat { align-self: center; }
 
-  /* Màn Sản lượng: khối Tổng 5 ô trên cả chiều ngang như cũ */
   .top-row.single { grid-template-columns: 1fr; }
   .hero.five { grid-template-columns: 1.7fr 1.7fr 1.7fr 0.9fr 1.1fr; }
   .hero.five .hero-stat .stat-value { font-size: clamp(13px, 1.05vw, 24px); }
   .hero.five .hero-stat.big .stat-value { font-size: clamp(16px, 1.4vw, 30px); }
   .hero.five .hero-stat.hero-time { display: flex; }
 }
+
+
+.branch-row.acct-row {
+  border-top: 1px dashed var(--border);
+  padding-top: 0.7vh;
+  margin-top: 0.2vh;
+}
+.branch-row.acct-row > span:first-child { color: var(--gold); }
+.branch-row[hidden] { display: none; }
+.branch-row.acct-row.acct-missing > span:last-child { color: var(--text-muted); font-weight: 500; }
